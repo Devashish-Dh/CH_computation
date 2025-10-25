@@ -105,7 +105,7 @@ def plot_3d_points(filename):
 
 
 # ----------------------------------------------------------------------
-## 2D Plotting Function with Pre-calculated Hull
+## 2D Plotting Function with Calculated Hull
 # ----------------------------------------------------------------------
 
 def plot_2d_points_with_calculated_hull(pts_filename, hull_filename):
@@ -113,7 +113,7 @@ def plot_2d_points_with_calculated_hull(pts_filename, hull_filename):
     Reads 2D scatter points and pre-calculated 2D hull corner points (in order)
     and plots them.
     """
-    print(f"\n--- Plotting 2D Points and Pre-calculated Hull ---")
+    print(f"\n--- Plotting 2D Points and calculated Hull ---")
     try:
         # --- 1. Load Scatter Points ---
         pts_data_1d = np.genfromtxt(pts_filename, delimiter=',')
@@ -300,7 +300,7 @@ def plot_local_2d_hulls_from_csv(hulls_filename, pts_filename):
 
 def plot_3d_points_with_calculated_hull(pts_filename, hull_filename):
     """
-    Reads 3D scatter points and pre-calculated 3D hull corner points (in order)
+    Reads 3D scatter points and alculated 3D hull corner points (in order)
     and plots them. Note: This plots the vertices connected sequentially, NOT the faces.
     """
     print(f"\n--- Plotting 3D Points and Pre-calculated Hull Edges ---")

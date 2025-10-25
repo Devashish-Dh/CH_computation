@@ -339,3 +339,40 @@ std::vector<pt_2d> merge_local_hulls(std::vector<pt_2d> hull1, std::vector<pt_2d
 
 
 //the func to do the iterative dnc:
+std::vector<pt_2d> iterative_merge_all_2d_hulls( std::vector<std::vector<pt_2d>> vectorOfLocalHulls )
+{
+
+    size_t n_hulls = vectorOfLocalHulls.size();
+    if (n_hulls == 0)return {};
+
+    std::vector<std::vector<pt_2d>> temp; 
+    temp.reserve((n_hulls + 1) / 2); // reserve once; reused each iteration
+    
+    while (n_hulls > 1)
+    {
+        temp.clear(); // reuse the same vector buffer
+        temp.reserve((n_hulls + 1) / 2);
+
+        for (size_t i = 0; i < n_hulls; i += 2)
+        {   
+            if (i + 1 < n_hulls)
+            {
+                // merge two hulls into one, move semantics to avoid copies
+                temp.push_back(merge_local_hulls(std::move(vectorOfLocalHulls[i]),
+                                                 std::move(vectorOfLocalHulls[i + 1])));
+            }
+            else
+            {
+                // odd leftover hull — just move it forward unchanged
+                temp.push_back(std::move(vectorOfLocalHulls[i]));
+            }
+        }
+
+        // reuse memory by swapping instead of allocating a new vector
+        vectorOfLocalHulls.swap(temp);
+        n_hulls = vectorOfLocalHulls.size(); // update for next round
+    }
+
+    return std::move(vectorOfLocalHulls.front());
+
+}

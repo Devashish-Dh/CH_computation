@@ -68,11 +68,15 @@ int main()
   //write_2D_points_csv(HULL_2D_FILE,my2dhull);
 
   auto mylocalhulls = init_chunks(myarr);
-  for(const auto& i : mylocalhulls)
-  {
-    print_2d_points(i);
-    std::cout<<" \n\n";
-  }
+  // for(const auto& i : mylocalhulls)
+  // {
+  //   print_2d_points(i);
+  //   std::cout<<" \n\n";
+  // }
+
+  vector<pt_2d> myans = iterative_merge_all_2d_hulls(mylocalhulls);
+
+  write_2D_points_csv(HULL_2D_FILE,myans);
 
   write_local_2d_hulls_to_csv(mylocalhulls,LOCAL_HULLS_2D_FILE);
 

@@ -4,28 +4,21 @@ import pandas as pd
 
 random.seed(42)
 
-RANGE_OF_MAGNITUDE = 1000
+RANGE_OF_MAGNITUDE = 1e100
 
 
 
 def gen2Dpts():
     n = int(input("number of 2D pts to generate? :"))
+    n = 2 * n  
 
-    n= 2*n
+    mags = np.random.uniform(-RANGE_OF_MAGNITUDE, RANGE_OF_MAGNITUDE + 1, size=n)
+    pts = mags * np.random.random(size=n)
 
-    mylist=[]
+    signs = np.random.randint(0, 2, size=n)
+    pts[signs == 1] *= -1
 
-    for i in range (n):
-        mag = random.randint(0,RANGE_OF_MAGNITUDE)
-        sign = random.randint(0,2)
-        pt = mag* (random.random())
-
-        if(sign):
-            pt = -1 * pt
-
-        mylist.append(pt)
-
-    return mylist
+    return pts
 
 
 def gen3Dpts():
@@ -33,19 +26,13 @@ def gen3Dpts():
 
     n= 3*n
 
-    mylist=[]
+    mags = np.random.uniform(-RANGE_OF_MAGNITUDE, RANGE_OF_MAGNITUDE + 1, size=n)
+    pts = mags * np.random.random(size=n)
 
-    for i in range (n):
-        mag = random.randint(0,RANGE_OF_MAGNITUDE)
-        sign = random.randint(0,2)
-        pt = mag* (random.random())
+    signs = np.random.randint(0, 2, size=n)
+    pts[signs == 1] *= -1
 
-        if(sign):
-            pt = -1 * pt
-
-        mylist.append(pt)
-
-    return mylist
+    return pts
 
 
 twoDPts = gen2Dpts()

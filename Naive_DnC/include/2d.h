@@ -56,7 +56,7 @@ size_t find_extreme_point_index_internal(const std::vector<pt_2d>& hull, bool fi
 std::vector<pt_2d> merge_local_hulls(std::vector<pt_2d> hull1,std::vector<pt_2d> hull2); // both by copy and both are CCW
 
 //the func that will do the merging iteratively:
-
+std::vector<pt_2d> iterative_merge_all_2d_hulls( std::vector<std::vector<pt_2d>> vectorOfLocalHulls );
 
 
 
