@@ -9,6 +9,8 @@ project(seq_dnc_ch
 add_executable(seq_dnc_ch
     src/main.cpp
     src/files_read_write.cpp
+    src/2d.cpp
+    src/3d.cpp
 )
 
 target_include_directories(seq_dnc_ch

@@ -18,7 +18,7 @@ const int W = 12; // Coordinate width
 #include <string>
 
 
-std::vector<pt_2d> read_2D_pts( std::string filepath )
+std::vector<pt_2d> read_2D_pts( const std::string filepath )
 {
     std::vector<pt_2d> points;
     std::ifstream file(filepath);
@@ -64,7 +64,7 @@ std::vector<pt_2d> read_2D_pts( std::string filepath )
 
 
 
-std::vector<pt_3d> read_3D_pts( std::string filepath )
+std::vector<pt_3d> read_3D_pts( const std::string filepath )
 {
     std::vector<pt_3d> points;
     std::ifstream file(filepath);
@@ -108,7 +108,7 @@ std::vector<pt_3d> read_3D_pts( std::string filepath )
 }
 
 
-void print_2d_points( std::vector<pt_2d> points)
+void print_2d_points( const std::vector<pt_2d>& points)
 {
     std::cout << std::fixed << std::setprecision(6);
     int c = 0;
@@ -126,7 +126,7 @@ void print_2d_points( std::vector<pt_2d> points)
 
 
 
-void print_3d_points( std::vector<pt_3d> points)
+void print_3d_points( const std::vector<pt_3d>& points)
 {
     std::cout << std::fixed << std::setprecision(6);
     int g = 0;
@@ -172,6 +172,54 @@ bool write_2D_points_csv(const std::string& filepath, const std::vector<pt_2d>& 
     outfile.close();
     return true;
 }
+
+
+
+
+bool write_local_2d_hulls_to_csv(
+    const std::vector<std::vector<pt_2d>>& local_hulls, 
+    const std::string& filename) 
+{
+    std::ofstream outfile(filename);
+
+    if (!outfile.is_open()) {
+        std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
+        return false;
+    }
+
+    // Set precision for floating point numbers
+    outfile << std::fixed << std::setprecision(6);
+    
+    int hull_count = 0;
+    for (const auto& hull : local_hulls) {
+        if (hull.empty()) continue;
+
+        for (size_t i = 0; i < hull.size(); ++i) {
+            
+            // 1. Write X and Y coordinates with an internal comma separator
+            outfile << hull[i].x << "," << hull[i].y;
+            
+            // 2. Add a trailing comma ONLY if it's NOT the last point (i.e., more points follow)
+            // This ensures the correct format: X1,Y1,X2,Y2,...,Xn,Yn
+            if (i < hull.size() - 1) {
+                outfile << ",";
+            }
+        }
+
+        hull_count++;
+
+
+        // IMPORTANT: Add a blank line to separate this hull from the next.
+        // This tells plotting tools to stop drawing a continuous line and start a new polyline.
+        outfile << "\n"; 
+    }
+
+    outfile.close();
+    std::cout << "Successfully wrote " << hull_count << " local hulls to " << filename << std::endl;
+
+    return true;
+}
+
 
 
 
