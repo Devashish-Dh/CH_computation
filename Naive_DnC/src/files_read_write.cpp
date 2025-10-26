@@ -11,7 +11,7 @@
 
 // for print to screen ops
 #include <iomanip>  // for printing 6 decimal places
-const int W = 12; // Coordinate width
+const int W = 30; // Coordinate width
 
 
 #include <vector>
@@ -117,6 +117,7 @@ void print_2d_points( const std::vector<pt_2d>& points)
         c++;
         std::cout << std::setw(1) << c 
                 << std::setw(W) << val.x 
+                <<","
                 << std::setw(W) << val.y 
                 << "\n";
     }

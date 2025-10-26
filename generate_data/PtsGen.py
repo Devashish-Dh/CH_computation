@@ -4,7 +4,7 @@ import pandas as pd
 
 random.seed(42)
 
-RANGE_OF_MAGNITUDE = 1e100
+RANGE_OF_MAGNITUDE =  1000 #1e100
 
 
 

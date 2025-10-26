@@ -1,106 +1,190 @@
 # Visualize.py
 
+import random
 import numpy as np
 import matplotlib
 matplotlib.use('Qt5Agg') 
 import matplotlib.pyplot as plt
+import struct
+import os
+
 
 from mpl_toolkits.mplot3d import Axes3D
 
 from scipy.spatial import ConvexHull # REQUIRED for calculating 3D FACES
 
-# --- Configuration ---
-# Update these filenames to match where you saved your generated data
-FILENAME_2D = '2d_gen_pts.txt'
-FILENAME_3D = '3d_gen_pts.txt'
-
-FILENAME_2D_HULL   = '2d_hull_calculated.txt' 
-FILENAME_2D_HULLS  = '2d_hulls_calculated.txt'
-
-FILENAME_3D_HULL   = '3d_hull_calculated.txt' 
 
 
 # ----------------------------------------------------------------------
 ## 2D Plotting Function
 # ----------------------------------------------------------------------
 
-def plot_2d_points(filename):
-    """Reads 2D points from a file (x1, y1, x2, y2, ...) and plots them."""
-    print(f"\n--- Plotting 2D Points from {filename} ---")
-    try:
-        # 1. Load Data: Read the comma-separated 1D data
-        data_1d = np.genfromtxt(filename, delimiter=',')
+def plot_2d_points(filename, max_points=10000):
+    sampled_points = []
+    total_points = 0
+    num_str = ''
+    coord_pair = []
 
-        # 2. Structure Data: Reshape the 1D array into an N x 2 array
-        if data_1d.size % 2 != 0:
-            print(f"Error: File '{filename}' has an odd number of values. Cannot form 2D points.")
-            return
+    with open(filename, 'r') as f:
+        while True:
+            chunk = f.read(1024 * 1024)  # read 1 MB at a time
+            if not chunk:
+                break
+            for c in chunk:
+                if c == ',':
+                    # end of a number
+                    coord_pair.append(float(num_str))
+                    num_str = ''
+                    if len(coord_pair) == 2:
+                        total_points += 1
+                        if len(sampled_points) < max_points:
+                            sampled_points.append(coord_pair)
+                        else:
+                            j = random.randint(0, total_points - 1)
+                            if j < max_points:
+                                sampled_points[j] = coord_pair
+                        coord_pair = []
+                else:
+                    num_str += c
 
-        pts_2d = data_1d.reshape(-1, 2)
-        x = pts_2d[:, 0]
-        y = pts_2d[:, 1]
-        
-        print(f"Successfully loaded {len(pts_2d)} 2D points.")
+        # catch last number if file doesn't end with comma
+        if num_str:
+            coord_pair.append(float(num_str))
+            if len(coord_pair) == 2:
+                total_points += 1
+                if len(sampled_points) < max_points:
+                    sampled_points.append(coord_pair)
+                else:
+                    j = random.randint(0, total_points - 1)
+                    if j < max_points:
+                        sampled_points[j] = coord_pair
 
-        # 3. Create Plot
-        plt.figure(figsize=(8, 6))
-        plt.scatter(x, y, marker='o', s=25, color='b', alpha=0.7)
-        
-        plt.title(f'2D Generated Points ({len(pts_2d)} Points)')
-        plt.xlabel('X Coordinate')
-        plt.ylabel('Y Coordinate')
-        plt.grid(True, linestyle='--', alpha=0.6)
-        plt.axis('equal') 
-        plt.show()
+    points = np.array(sampled_points)
+    pts_x, pts_y = points[:, 0], points[:, 1]
 
-    except FileNotFoundError:
-        print(f"Error: File '{filename}' not found. Please ensure the file exists.")
-    except Exception as e:
-        print(f"An error occurred while plotting 2D points: {e}")
+    print(f"Loaded {total_points} points; plotting {len(points)} sampled points.")
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(pts_x, pts_y, marker='o', s=25, color='b', alpha=0.7)
+    plt.title(f'2D Generated Points ({len(points)} Points)')
+    plt.xlabel('X Coordinate')
+    plt.ylabel('Y Coordinate')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.axis('equal')
+    plt.show()
 
 
 
 # ----------------------------------------------------------------------
-## 3D Plotting Function
+## 2D Plotting Function
 # ----------------------------------------------------------------------
 
-def plot_3d_points(filename):
-    """Reads 3D points from a file (x1, y1, z1, x2, y2, z2, ...) and plots them."""
-    print(f"\n--- Plotting 3D Points from {filename} ---")
-    try:
-        # 1. Load Data: Read the comma-separated 1D data
-        data_1d = np.genfromtxt(filename, delimiter=',')
+def plot_2d_points_binary(filename, max_points=10000):
+    """
+    Efficiently samples and plots 2D points stored in a binary file
+    written as consecutive doubles (x, y) from C++.
+    Uses reservoir sampling so it never loads the whole file.
+    """
+    point_size = 16  # two doubles (8 bytes each)
+    chunk_size = 1 << 20  # 1 MB
+    sampled_points = []
+    total_points = 0
 
-        # 2. Structure Data: Reshape the 1D array into an N x 3 array
-        if data_1d.size % 3 != 0:
-            print(f"Error: File '{filename}' size ({data_1d.size}) is not divisible by 3. Cannot form 3D points.")
-            return
+    with open(filename, "rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
 
-        pts_3d = data_1d.reshape(-1, 3)
-        x = pts_3d[:, 0]
-        y = pts_3d[:, 1]
-        z = pts_3d[:, 2]
+            # how many full points fit in this chunk
+            num_points = len(chunk) // point_size
+            for i in range(num_points):
+                # unpack two doubles (x, y)
+                offset = i * point_size
+                x, y = struct.unpack_from("dd", chunk, offset)
+
+                total_points += 1
+                if len(sampled_points) < max_points:
+                    sampled_points.append([x, y])
+                else:
+                    j = random.randint(0, total_points - 1)
+                    if j < max_points:
+                        sampled_points[j] = [x, y]
+
+    points = np.array(sampled_points)
+    pts_x, pts_y = points[:, 0], points[:, 1]
+
+    print(f"Loaded {total_points:,} total points; plotting {len(points):,} sampled points.")
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(pts_x, pts_y, s=25, color='b', alpha=0.7)
+    plt.title(f"2D Generated Points ({len(points)} sampled from {total_points:,})")
+    plt.xlabel("X Coordinate")
+    plt.ylabel("Y Coordinate")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.axis("equal")
+    plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # ----------------------------------------------------------------------
+# ## 3D Plotting Function
+# # ----------------------------------------------------------------------
+
+# def plot_3d_points(filename):
+#     """Reads 3D points from a file (x1, y1, z1, x2, y2, z2, ...) and plots them."""
+#     print(f"\n--- Plotting 3D Points from {filename} ---")
+#     try:
+#         # 1. Load Data: Read the comma-separated 1D data
+#         data_1d = np.genfromtxt(filename, delimiter=',')
+
+#         # 2. Structure Data: Reshape the 1D array into an N x 3 array
+#         if data_1d.size % 3 != 0:
+#             print(f"Error: File '{filename}' size ({data_1d.size}) is not divisible by 3. Cannot form 3D points.")
+#             return
+
+#         pts_3d = data_1d.reshape(-1, 3)
+#         x = pts_3d[:, 0]
+#         y = pts_3d[:, 1]
+#         z = pts_3d[:, 2]
         
-        print(f"Successfully loaded {len(pts_3d)} 3D points.")
+#         print(f"Successfully loaded {len(pts_3d)} 3D points.")
 
-        # 3. Create Plot
-        fig = plt.figure(figsize=(10, 8))
-        # This line creates the 3D axis
-        ax = fig.add_subplot(111, projection='3d') 
+#         # 3. Create Plot
+#         fig = plt.figure(figsize=(10, 8))
+#         # This line creates the 3D axis
+#         ax = fig.add_subplot(111, projection='3d') 
 
-        ax.scatter(x, y, z, marker='o', s=25, color='r', alpha=0.7)
+#         ax.scatter(x, y, z, marker='o', s=25, color='r', alpha=0.7)
 
-        ax.set_title(f'3D Generated Points ({len(pts_3d)} Points)')
-        ax.set_xlabel('X Coordinate')
-        ax.set_ylabel('Y Coordinate')
-        ax.set_zlabel('Z Coordinate')
+#         ax.set_title(f'3D Generated Points ({len(pts_3d)} Points)')
+#         ax.set_xlabel('X Coordinate')
+#         ax.set_ylabel('Y Coordinate')
+#         ax.set_zlabel('Z Coordinate')
 
-        plt.show()
+#         plt.show()
 
-    except FileNotFoundError:
-        print(f"Error: File '{filename}' not found. Please ensure the file exists.")
-    except Exception as e:
-        print(f"An error occurred while plotting 3D points: {e}")
+#     except FileNotFoundError:
+#         print(f"Error: File '{filename}' not found. Please ensure the file exists.")
+#     except Exception as e:
+#         print(f"An error occurred while plotting 3D points: {e}")
 
 
 
@@ -108,19 +192,54 @@ def plot_3d_points(filename):
 ## 2D Plotting Function with Calculated Hull
 # ----------------------------------------------------------------------
 
-def plot_2d_points_with_calculated_hull(pts_filename, hull_filename):
+def plot_2d_points_with_calculated_hull(pts_filename, hull_filename, max_points=10000):
     """
     Reads 2D scatter points and pre-calculated 2D hull corner points (in order)
     and plots them.
+    Memory-efficient: samples at most max_points from very large text files.
     """
     print(f"\n--- Plotting 2D Points and calculated Hull ---")
     try:
-        # --- 1. Load Scatter Points ---
-        pts_data_1d = np.genfromtxt(pts_filename, delimiter=',')
-        if pts_data_1d.size % 2 != 0:
-            print(f"Error: Points file '{pts_filename}' has an odd number of values.")
-            return
-        points = pts_data_1d.reshape(-1, 2)
+        # --- 1. Load Scatter Points using streaming + reservoir sampling ---
+        sampled_points = []
+        total_points = 0
+        num_str = ''
+        coord_pair = []
+
+        with open(pts_filename, 'r') as f:
+            while True:
+                chunk = f.read(1024 * 1024)  # read 1 MB at a time
+                if not chunk:
+                    break
+                for c in chunk:
+                    if c == ',':
+                        coord_pair.append(float(num_str))
+                        num_str = ''
+                        if len(coord_pair) == 2:
+                            total_points += 1
+                            if len(sampled_points) < max_points:
+                                sampled_points.append(coord_pair)
+                            else:
+                                j = random.randint(0, total_points - 1)
+                                if j < max_points:
+                                    sampled_points[j] = coord_pair
+                            coord_pair = []
+                    else:
+                        num_str += c
+
+            # catch last number if file doesn't end with comma
+            if num_str:
+                coord_pair.append(float(num_str))
+                if len(coord_pair) == 2:
+                    total_points += 1
+                    if len(sampled_points) < max_points:
+                        sampled_points.append(coord_pair)
+                    else:
+                        j = random.randint(0, total_points - 1)
+                        if j < max_points:
+                            sampled_points[j] = coord_pair
+
+        points = np.array(sampled_points)
         pts_x, pts_y = points[:, 0], points[:, 1]
 
         # --- 2. Load Hull Corner Points ---
@@ -131,20 +250,21 @@ def plot_2d_points_with_calculated_hull(pts_filename, hull_filename):
         hull_points = hull_data_1d.reshape(-1, 2)
         hull_x, hull_y = hull_points[:, 0], hull_points[:, 1]
 
-        print(f"Loaded {len(points)} scatter points and {len(hull_points)} hull corner points.")
+        print(f"Loaded {total_points} scatter points; plotting {len(points)} sampled points.")
+        print(f"Hull has {len(hull_points)} corner points.")
 
         # --- 3. Create the Plot ---
         plt.figure(figsize=(9, 7))
 
-        # Plot the generated points (Scatter)
+        # Scatter points
         plt.scatter(pts_x, pts_y, marker='o', s=30, color='b', alpha=0.6, label='Generated Points')
 
-        # Plot the convex hull lines (Connecting the corner points)
-        # 1. Connects point 1 to 2, 2 to 3, etc.
+        # Hull boundary lines
         plt.plot(hull_x, hull_y, color='r', linestyle='-', linewidth=2, label='Convex Hull Boundary')
-
-        # 2. Connects the last point back to the first to close the loop
         plt.plot([hull_x[-1], hull_x[0]], [hull_y[-1], hull_y[0]], color='r', linestyle='-', linewidth=2)
+
+        # Hull corner points as distinct larger red points
+        plt.scatter(hull_x, hull_y, marker='o', s=80, color='r', alpha=0.9, label='Hull Corner Points')
 
         plt.title('2D Points and Pre-calculated Convex Hull')
         plt.xlabel('X Coordinate')
@@ -158,6 +278,105 @@ def plot_2d_points_with_calculated_hull(pts_filename, hull_filename):
         print(f"Error: File not found: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+
+
+# ----------------------------------------------------------------------
+## 2D Plotting Function with Calculated Hull
+# ----------------------------------------------------------------------
+
+def plot_2d_points_with_calculated_hull_bin(points_bin_filename, hull_filename, max_points=10000):
+    """
+    Reads 2D scatter points from a binary file and pre-calculated 2D hull corner points (text CSV),
+    then plots them. Memory-efficient: samples at most max_points points.
+    """
+    print(f"\n--- Plotting 2D Points (binary) and calculated Hull (text) ---")
+    try:
+        # --- 1. Load Scatter Points from binary using reservoir sampling ---
+        point_size_bytes = 2 * 8  # 2 doubles per pt_2d
+        sampled_points = []
+        total_points = 0
+
+        with open(points_bin_filename, 'rb') as f:
+            while True:
+                chunk_bytes = f.read(point_size_bytes * 1000000)  # read 1M points at a time
+                if not chunk_bytes:
+                    break
+                num_points_in_chunk = len(chunk_bytes) // point_size_bytes
+                pts_chunk = np.frombuffer(chunk_bytes, dtype=np.float64).reshape(-1, 2)
+                for pt in pts_chunk:
+                    total_points += 1
+                    if len(sampled_points) < max_points:
+                        sampled_points.append(pt)
+                    else:
+                        j = random.randint(0, total_points - 1)
+                        if j < max_points:
+                            sampled_points[j] = pt
+
+        points = np.array(sampled_points)
+        pts_x, pts_y = points[:, 0], points[:, 1]
+
+        print(f"Loaded {total_points} scatter points; plotting {len(points)} sampled points.")
+
+        # --- 2. Load Hull Corner Points from text ---
+        hull_data_1d = np.genfromtxt(hull_filename, delimiter=',')
+        if hull_data_1d.size % 2 != 0:
+            print(f"Error: Hull file '{hull_filename}' has an odd number of values.")
+            return
+        hull_points = hull_data_1d.reshape(-1, 2)
+        hull_x, hull_y = hull_points[:, 0], hull_points[:, 1]
+
+        print(f"Hull has {len(hull_points)} corner points.")
+
+        # --- 3. Create the Plot ---
+        plt.figure(figsize=(9, 7))
+        plt.scatter(pts_x, pts_y, marker='o', s=30, color='b', alpha=0.6, label='Generated Points')
+        plt.plot(hull_x, hull_y, color='r', linestyle='-', linewidth=2, label='Convex Hull Boundary')
+        plt.plot([hull_x[-1], hull_x[0]], [hull_y[-1], hull_y[0]], color='r', linestyle='-', linewidth=2)
+        plt.scatter(hull_x, hull_y, marker='o', s=80, color='r', alpha=0.9, label='Hull Corner Points')
+
+        plt.title('2D Points and Pre-calculated Convex Hull')
+        plt.xlabel('X Coordinate')
+        plt.ylabel('Y Coordinate')
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.axis('equal') 
+        plt.legend()
+        plt.show()
+
+    except FileNotFoundError as e:
+        print(f"Error: File not found: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -368,19 +587,37 @@ def plot_3d_points_with_calculated_hull(pts_filename, hull_filename):
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
     
+
+    # --- Configuration ---
+    # Update these filenames to match generated data
+    FILENAME_2D = '2d_gen_pts.txt'
+    FILENAME_3D = '3d_gen_pts.txt'
+
+    FILENAME_2D_BIN = '2d_gen_pts.bin'
+
+
+    FILENAME_2D_HULL   = '2d_hull_calculated.txt' 
+    FILENAME_2D_HULLS  = '2d_hulls_calculated.txt'
+
+    FILENAME_3D_HULL   = '3d_hull_calculated.txt' 
+
+
     # Execute the 2D plotting function
-    plot_2d_points(FILENAME_2D)
-    
+    #plot_2d_points(FILENAME_2D)
+    plot_2d_points_binary(FILENAME_2D_BIN)
+
+
     # Execute the 2D points and hull plotting function
-    plot_2d_points_with_calculated_hull(FILENAME_2D, FILENAME_2D_HULL)
+    #plot_2d_points_with_calculated_hull(FILENAME_2D, FILENAME_2D_HULL)
+    plot_2d_points_with_calculated_hull_bin(FILENAME_2D_BIN,FILENAME_2D_HULL)
 
     # Execute the 2D points and hulls plotting function
-    plot_local_2d_hulls_from_csv(FILENAME_2D_HULLS,FILENAME_2D)
+    #plot_local_2d_hulls_from_csv(FILENAME_2D_HULLS,FILENAME_2D)
 
 
 
     # Execute the 3D plotting function
-    plot_3d_points(FILENAME_3D)
+    #plot_3d_points(FILENAME_3D)
 
     # Execute the 3D points and hull plotting function
-    plot_3d_points_with_calculated_hull(FILENAME_3D, FILENAME_3D_HULL)
+    #plot_3d_points_with_calculated_hull(FILENAME_3D, FILENAME_3D_HULL)

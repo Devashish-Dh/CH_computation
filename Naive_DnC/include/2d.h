@@ -1,5 +1,5 @@
 #include<vector>
-
+#include <string>
 
 
 #ifndef _2D_HEADER_FILE // Check if the guard macro is *not* defined
@@ -59,6 +59,14 @@ std::vector<pt_2d> merge_local_hulls(std::vector<pt_2d> hull1,std::vector<pt_2d>
 std::vector<pt_2d> iterative_merge_all_2d_hulls( std::vector<std::vector<pt_2d>> vectorOfLocalHulls );
 
 
+//func for large amt of data generation, I/O ()because crashing otherwise
+std::vector<pt_2d> generate2DPoints(size_t n);
+
+void save2DPointsCSV(const std::string& filename, const std::vector<pt_2d>& pts);
+
+void save2DPointsBinary(const std::string& filename, const std::vector<pt_2d>& pts);
+
+std::vector<pt_2d> read2DPointsBinaryBuffered(const std::string& filename, size_t chunk_size = 1'000'000);
 
 
 // ... content of the header file (declarations, etc.) ...
