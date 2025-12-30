@@ -4,8 +4,6 @@
 #include "3d.h"
 #include "files_read_write.h"
 
-#include <random>
-#include <fstream>
 #include <algorithm>
 #include <vector>
 
@@ -13,16 +11,6 @@
 using namespace std;
 
 //double : 64 bits == 8 Bytes
-
-const string IO_2d_PTS = "2d_gen_pts.bin";
-
-const string HULL_2D_FILE = "2d_hull_calculated.txt";
-
-const string LOCAL_HULLS_2D_FILE = "2d_hulls_calculated.txt";
-
-const string HULL_3D_FILE = "3d_hull_calculated.txt";
-
-const string LOCAL_HULLS_3D_FILE = "3d_hulls_calculated.txt";
 
 
 
@@ -74,70 +62,82 @@ struct CompareByXYZ {
 
 
 
+struct Config2D {
+    std::string mode;
+    std::string input_bin;
+    std::string hull_out;
+};
 
 
-int main()
+
+int main(int argc, char** argv)
 {
-  std::cout<<"hi\n";
+  Config2D cfg;
+
+    if (argc < 2) 
+    {
+        std::cerr <<
+            "Usage:\n"
+            "  " << argv[0] << " <in.bin> <out.csv>\n"
+            "  " << argv[0] << " generate <n_points> <out.bin> \n(INFO: n = 160000000 ~2.58GB)\n(INFO: no arg = Default = 1000 points)\n";
+        return 1;
+    }
+
+    std::string first = argv[1];
+
+    if (first == "generate") 
+    {
+      cfg.mode = "generate";       
+            
+        if (argc != 4) 
+          {
+            std::cerr << "Usage: "
+                      << argv[0] << " generate <n_points> <out.bin>\n";
+            return 1;
+          }
+
+          //Generate data ONCE! (takes quite a while for large number of points)
+
+          size_t n2D = std::stoull(argv[2]); 
+
+          std::vector<pt_2d> twoDPts = generate2DPoints(n2D);
+              
+          //print_2d_points(twoDPts);
+
+          //save2DPointsCSV("2d_gen_pts.txt", twoDPts);
+          save2DPointsBinary(argv[3],twoDPts);
+            
+          std::cout << "\nPoints generation completed.\n";
+
+          return 0;
+    }
+
+    cfg.mode = "compute";
+    cfg.input_bin = argv[1];
+    cfg.hull_out  = argv[2];
 
 
-  // //boilerplate
-  // vector<pt_2d> myarr = read_2D_pts("2d_gen_pts.txt");
-  
-  // std::cout<<"data_read:\n";
-  // std::cout<<"-----------\n"<<myarr.size();
 
-  // // write_2D_points_csv(HULL_2D_FILE,myarr);
-
-  // //sorting the points by X coordinate
-  // std::sort(myarr.begin(), myarr.end(),CompareByX<pt_2d>{});
-
-  // std::cout<<"sorted by x and ties fixed by y:\n";
-
-
-  // //auto my2dhull = compute_local_2d_hull(myarr);
-  // //write_2D_points_csv(HULL_2D_FILE,my2dhull);
-
-  // auto mylocalhulls = init_chunks(myarr);
-  // // for(const auto& i : mylocalhulls)
-  // // {
-  // //   print_2d_points(i);
-  // //   std::cout<<" \n\n";
-  // // }
-
-  // vector<pt_2d> myans = iterative_merge_all_2d_hulls(mylocalhulls);
-
-  // write_2D_points_csv(HULL_2D_FILE,myans);
-
-  // write_local_2d_hulls_to_csv(mylocalhulls,LOCAL_HULLS_2D_FILE);
-
-
-
-  //Generate data ONCE!
-//Generate data block:
-//   size_t n2D = 160000000; // 160 million 2D points (~2.58 GB memory)
-//   //size_t n2D = 4;
-//   std::vector<pt_2d> twoDPts = generate2DPoints(n2D);
-  
-//   //print_2d_points(twoDPts);
-
-//   //save2DPointsCSV("2d_gen_pts.txt", twoDPts);
-//   save2DPointsBinary(IO_2d_PTS,twoDPts);
-//   std::cout << "\nPoints generation completed.\n";
   
 
 //computation block:
 
-  std::vector<pt_2d> TwoDpoints = read2DPointsBinaryBuffered(IO_2d_PTS);
+  std::vector<pt_2d> TwoDpoints =
+      read2DPointsBinaryBuffered(cfg.input_bin);
+
   std::cout<<"n Pts:"<<TwoDpoints.size()<<"\n";
   //print_2d_points(TwoDpoints);
+
   std::sort(TwoDpoints.begin(), TwoDpoints.end(),CompareByX<pt_2d>{});
-  std::cout<<"\n sorted by x and ties fixed by y:\n";
+  //std::cout<<"\nsorted by x and ties fixed by y:\n";
+  
   auto mylocalhulls = init_chunks(TwoDpoints);
-  std::cout<<"Local hulls formed:"<<mylocalhulls.size()<<"\n";
+  //std::cout<<"Local hulls formed:"<<mylocalhulls.size()<<"\n";
+  
   vector<pt_2d> myans = iterative_merge_all_2d_hulls(mylocalhulls);
-  std::cout<<"CHC done:\n";
-  write_2D_points_csv(HULL_2D_FILE,myans);
+  std::cout<<"CHC done!\nHull CSV : "<<cfg.hull_out<<"\n";
+  
+  write_2D_points_csv(cfg.hull_out, myans);
 
 
   // read and run CH computation:
@@ -159,14 +159,6 @@ int main()
 
   std::cout<<"\n ------------------\n";
 
-  //vector<pt_3d> myarr2 = read_3D_pts("3d_gen_pts.txt");
-
-  //sorting the points by X Y Z coordinates
-  //std::sort(myarr2.begin(), myarr2.end(),CompareByXYZ<pt_3d>{});
-
-  //print_3d_points(myarr2);
-
-  // write_3D_points_csv(HULL_3D_FILE,myarr2);
 
 
   return 1234;

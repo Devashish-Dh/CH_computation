@@ -26,6 +26,16 @@ bool write_local_2d_hulls_to_csv(const std::vector<std::vector<pt_2d>>& local_hu
 bool write_3D_points_csv(const std::string& filepath, const std::vector<pt_3d>& points);
 
 
+//func for large amt of data generation, I/O ()because crashing otherwise
+std::vector<pt_2d> generate2DPoints(size_t n);
+
+void save2DPointsCSV(const std::string& filename, const std::vector<pt_2d>& pts);
+
+void save2DPointsBinary(const std::string& filename, const std::vector<pt_2d>& pts);
+
+std::vector<pt_2d> read2DPointsBinaryBuffered(const std::string& filename, size_t chunk_size = 1'000'000);
+
+
 
 // ... content of the header file (declarations, etc.) ...
 

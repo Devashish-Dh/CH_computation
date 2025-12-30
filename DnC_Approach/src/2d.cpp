@@ -1,15 +1,15 @@
 #include "2d.h"
 
-#include <iostream>
-#include <sstream>
+#include <cstddef>
+
 #include <vector>
 #include <stdexcept>
-#include <fstream>
+
 #include <algorithm>
 #include <iterator> // Required for std::distance
 #include <random>
-#include <fstream>
-#include <iomanip>  // for std::fixed, std::setprecision
+
+
 
 const double RANGE_OF_MAGNITUDE = 1000000000000000.0; //10^15 currently
 
@@ -50,13 +50,13 @@ void sortedByAnglesMade(std::vector<pt_2d>& points, const pt_2d& myPivotPoint)
             // Calculate orientation: P -> A -> B
             double orientation = cross_product_orientation(myPivotPoint, a, b);
 
-            // 1. PRIMARY COMPARISON: Angular order (CCW vs CW) // counter clock wise vs clock wise
+            // PRIMARY COMPARISON: Angular order (CCW vs CW) // counter clock wise vs clock wise
             if (orientation != 0) {
                 // CCW turn means 'a' has a smaller angle and comes first.
                 return orientation > 0;
             }
 
-            // 2. TIE-BREAKER: Collinear - Closer point comes first
+            // TIE-BREAKER: Collinear - Closer point comes first
             double dx_a = a.x - myPivotPoint.x;
             double dy_a = a.y - myPivotPoint.y;
             double dx_b = b.x - myPivotPoint.x;
@@ -165,7 +165,7 @@ std::vector< std::vector<pt_2d> > init_chunks(std::vector<pt_2d>& points, size_t
     if(points.size() <= chunk_size)
         {
             std::vector<pt_2d> my2dhull = compute_local_2d_hull(std::move(points)); // for no copy overhead... just transfer ownership
-            return { std::move(my2dhull) }; // again, move out 
+            return { std::move(my2dhull) }; //
         }
 
     size_t numberOfChunks = (points.size() + chunk_size - 1) /chunk_size ;
@@ -257,7 +257,7 @@ std::vector<pt_2d> merge_local_hulls(std::vector<pt_2d> hull1, std::vector<pt_2d
     size_t h1Size = hull1.size();
     size_t h2Size = hull2.size();
 
-    // 1. Initial Guesses: Rightmost of hull1, Leftmost of hull2
+    // Initial Guesses: Rightmost of hull1, Leftmost of hull2
     // These points provide a guaranteed starting segment that connects the two hulls.
     size_t p_start = find_extreme_point_index_internal(hull1, false); // Rightmost pt of Left Hull (H1)
     size_t q_start = find_extreme_point_index_internal(hull2, true);  // Leftmost pt of Right Hull (H2)
@@ -389,12 +389,15 @@ std::vector<pt_2d> iterative_merge_all_2d_hulls( std::vector<std::vector<pt_2d>>
 
 
 
+
+
+
 // Generate 2D points
-std::vector<pt_2d> generate2DPoints(size_t n) {
-    n *= 2; // match Python doubling
+std::vector<pt_2d> generate2DPoints(size_t n = 1000) {
+    n *= 2; // each point has x and y
     std::vector<pt_2d> pts(n/2); // final vector of pt_2d structs
 
-    std::mt19937_64 rng(42); // fixed seed
+    std::mt19937_64 rng(42); // FIXED  SEED!
     std::uniform_real_distribution<double> mag_dist(-RANGE_OF_MAGNITUDE, RANGE_OF_MAGNITUDE + 1);
     std::uniform_real_distribution<double> frac_dist(0.0, 1.0);
     std::uniform_int_distribution<int> sign_dist(0, 1);
@@ -412,137 +415,3 @@ std::vector<pt_2d> generate2DPoints(size_t n) {
 }
 
 
-// Write 2D points to CSV (single row, comma-separated)
-//inefficient implementation:
-// void save2DPointsCSV(const std::string& filename, const std::vector<pt_2d>& pts) {
-
-//     std::cout << std::fixed << std::setprecision(6);
-
-//     std::ofstream fout(filename);
-//     for (size_t i = 0; i < pts.size(); ++i) {
-//         fout << pts[i].x << "," << pts[i].y;
-//         if (i + 1 < pts.size()) fout << ",";
-//     }
-//     fout << "\n";
-// }
-
-void save2DPointsCSV(const std::string& filename, const std::vector<pt_2d>& pts) {
-    std::ofstream fout(filename, std::ios::out | std::ios::binary);
-    if (!fout) {
-        std::cerr << "Error opening file: " << filename << "\n";
-        return;
-    }
-
-    std::vector<char> buf(1 << 20);
-    fout.rdbuf()->pubsetbuf(buf.data(), buf.size());
-
-    fout << std::fixed << std::setprecision(6);
-
-    std::string chunk;
-    chunk.reserve(1 << 20);
-
-    for (size_t i = 0; i < pts.size(); ++i) {
-        chunk += std::to_string(pts[i].x);
-        chunk += ",";
-        chunk += std::to_string(pts[i].y);
-        if (i + 1 < pts.size()) chunk += ",";
-
-        if (chunk.size() > (1 << 20)) {
-            fout << chunk;
-            chunk.clear();
-        }
-
-        if (i % 10'000'000 == 0 && i > 0)
-            std::cout << i << " points written...\n";
-    }
-
-    if (!chunk.empty()) fout << chunk;
-    fout << "\n";
-    fout.close();
-
-    std::cout << "Finished writing " << pts.size() << " points to " << filename << "\n";
-}
-
-
-
-void save2DPointsBinary(const std::string& filename, const std::vector<pt_2d>& pts) {
-    std::ofstream fout(filename, std::ios::out | std::ios::binary);
-    if (!fout) {
-        std::cerr << "Error: cannot open file " << filename << "\n";
-        return;
-    }
-
-    // large 1 MB output buffer to reduce syscall overhead
-    std::vector<char> buffer(1 << 20);
-    fout.rdbuf()->pubsetbuf(buffer.data(), buffer.size());
-
-    const size_t total_points = pts.size();
-    const size_t chunk_size = 1'000'000; // write 1M points (≈16 MB) per batch
-
-    for (size_t i = 0; i < total_points; i += chunk_size) {
-        size_t n = std::min(chunk_size, total_points - i);
-        fout.write(reinterpret_cast<const char*>(&pts[i]), n * sizeof(pt_2d));
-
-        if (i % 10'000'000 == 0 && i > 0) {
-            std::cout << i << " points written...\n";
-        }
-    }
-
-    fout.close();
-
-    std::cout << "Finished writing " << total_points << " points ("
-              << (total_points * sizeof(pt_2d)) / (1024.0 * 1024.0)
-              << " MB) to " << filename << "\n";
-}
-
-
-
-
-std::vector<pt_2d> read2DPointsBinaryBuffered(const std::string& filename, size_t chunk_size) {
-    std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    if (!fin) {
-        std::cerr << "Error opening file for reading: " << filename << "\n";
-        return {};
-    }
-
-    // Move to end to get total size
-    fin.seekg(0, std::ios::end);
-    std::streamsize file_size = fin.tellg();
-    fin.seekg(0, std::ios::beg);
-
-    if (file_size % sizeof(pt_2d) != 0) {
-        std::cerr << "File size is not a multiple of pt_2d struct size! Possibly corrupt file.\n";
-        return {};
-    }
-
-    const size_t total_points = file_size / sizeof(pt_2d);
-    std::vector<pt_2d> pts;
-    pts.reserve(total_points);  // pre-allocate but don’t commit memory yet
-
-    std::vector<pt_2d> buffer(chunk_size);
-    std::vector<char> io_buf(1 << 20); // 1 MB I/O buffer
-    fin.rdbuf()->pubsetbuf(io_buf.data(), io_buf.size());
-
-    size_t points_read = 0;
-    while (fin) {
-        fin.read(reinterpret_cast<char*>(buffer.data()), buffer.size() * sizeof(pt_2d));
-        std::streamsize bytes_read = fin.gcount();
-
-        if (bytes_read <= 0) break;
-        size_t num_pts = bytes_read / sizeof(pt_2d);
-
-        pts.insert(pts.end(), buffer.begin(), buffer.begin() + num_pts);
-        points_read += num_pts;
-
-        if (points_read % (10'000'000) == 0)
-            std::cout << "Read " << points_read << " points...\n";
-    }
-
-    fin.close();
-
-    std::cout << "Finished reading " << pts.size() << " points (" 
-              << (pts.size() * sizeof(pt_2d)) / (1024.0 * 1024.0)
-              << " MB) from " << filename << "\n";
-
-    return pts;
-}

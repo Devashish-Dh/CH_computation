@@ -6,13 +6,13 @@ import matplotlib
 matplotlib.use('Qt5Agg') 
 import matplotlib.pyplot as plt
 import struct
+
 import os
+import sys
 
 
-from mpl_toolkits.mplot3d import Axes3D
 
-from scipy.spatial import ConvexHull # REQUIRED for calculating 3D FACES
-
+#! AI / Language-Models were used to write all of the following boilerplate and QOL visualization and pts gen code, rest was painfully hand-written !#
 
 
 # ----------------------------------------------------------------------
@@ -583,41 +583,49 @@ def plot_3d_points_with_calculated_hull(pts_filename, hull_filename):
 
 
 # ----------------------------------------------------------------------
-## Main Execution Block
+## Main Execution Block (with cli args)
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    
+    if len(sys.argv) < 2:
+        print(
+            "Usage:\n"
+            "  python Visualize.py plot2d_bin <points.bin> <hull.csv>\n"
+            "  python Visualize.py plot2d_txt <points.txt> <hull.csv>\n"
+            "  python Visualize.py plot3d     <points.txt> <hull.csv>"
+        )
+        sys.exit(1)
 
-    # --- Configuration ---
-    # Update these filenames to match generated data
-    FILENAME_2D = '2d_gen_pts.txt'
-    FILENAME_3D = '3d_gen_pts.txt'
+    mode = sys.argv[1]
 
-    FILENAME_2D_BIN = '2d_gen_pts.bin'
+    if mode == "plot2d_bin":
+        if len(sys.argv) != 4:
+            print("Usage: python viz.py plot2d_bin <points.bin> <hull.csv>")
+            sys.exit(1)
 
+        plot_2d_points_with_calculated_hull_bin(
+            sys.argv[2], sys.argv[3]
+        )
+        sys.exit(0)
 
-    FILENAME_2D_HULL   = '2d_hull_calculated.txt' 
-    FILENAME_2D_HULLS  = '2d_hulls_calculated.txt'
+    if mode == "plot2d_txt":
+        if len(sys.argv) != 4:
+            print("Usage: python viz.py plot2d_txt <points.txt> <hull.csv>")
+            sys.exit(1)
 
-    FILENAME_3D_HULL   = '3d_hull_calculated.txt' 
+        plot_2d_points_with_calculated_hull(
+            sys.argv[2], sys.argv[3]
+        )
+        sys.exit(0)
 
+    # if mode == "plot3d":
+    #     if len(sys.argv) != 4:
+    #         print("Usage: python viz.py plot3d <points.txt> <hull.csv>")
+    #         sys.exit(1)
 
-    # Execute the 2D plotting function
-    #plot_2d_points(FILENAME_2D)
-    plot_2d_points_binary(FILENAME_2D_BIN)
+    #     plot_3d_points_with_calculated_hull(
+    #         sys.argv[2], sys.argv[3]
+    #     )
+    #     sys.exit(0)
 
-
-    # Execute the 2D points and hull plotting function
-    #plot_2d_points_with_calculated_hull(FILENAME_2D, FILENAME_2D_HULL)
-    plot_2d_points_with_calculated_hull_bin(FILENAME_2D_BIN,FILENAME_2D_HULL)
-
-    # Execute the 2D points and hulls plotting function
-    #plot_local_2d_hulls_from_csv(FILENAME_2D_HULLS,FILENAME_2D)
-
-
-
-    # Execute the 3D plotting function
-    #plot_3d_points(FILENAME_3D)
-
-    # Execute the 3D points and hull plotting function
-    #plot_3d_points_with_calculated_hull(FILENAME_3D, FILENAME_3D_HULL)
+    print(f"Unknown mode: {mode}")
+    sys.exit(1)
